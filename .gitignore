@@ -23,3 +23,6 @@ gradle/wrapper/gradle-wrapper.jar
 
 # Local config
 local.properties
+
+# Phone framework dumps, Vector logs, and disassembly scratch
+device-framework/

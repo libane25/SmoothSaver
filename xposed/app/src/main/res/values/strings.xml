@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SmoothSaver</string>
-    <string name="app_description">Prevents Battery Saver from forcing 60Hz on Pixel 7. Keeps your display at smooth 90Hz.</string>
+    <string name="app_description">Clears the Pixel 10a Battery Saver 60 Hz render vote without changing Battery Saver.</string>
+    <string name="status_heading">SmoothSaver %1$s</string>
+    <string name="status_body">The 1.1.0 hooks that crash Settings search are not installed.\n\nOn the connected Pixel 10a, build CP3A.261005.005, Battery Saver stores a 0–60 Hz render vote at priority 20. This build clears that vote only when SettingsObserver.updateLowPowerModeSettingLocked calls VotesStorage.updateGlobalVote. Battery Saver itself stays as you set it. Brightness handling and the separate modes vote at priority 19 are unchanged. The display keeps its normal adaptive rates, up to the panel\'s 120 Hz, and is not forced to one rate.\n\nIn Vector, scope must be System Framework only. Vector stores that scope as system. The package name android does not load this module into system_server on this Vector build. Do not add Settings.\n\nRecovery: disable SmoothSaver in Vector and reboot. If an older build prevents normal startup, boot Android in safe mode, disable SmoothSaver, and reboot. Safe mode does not load Vector modules.</string>
 </resources>

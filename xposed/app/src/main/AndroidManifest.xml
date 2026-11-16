@@ -16,10 +16,21 @@
             android:value="93" />
         <meta-data
             android:name="xposeddescription"
-            android:value="Prevents Battery Saver from forcing 60Hz on Pixel 7. Keeps your display at smooth 90Hz." />
+            android:value="Clears the Pixel 10a Battery Saver 60 Hz render vote without changing Battery Saver or Settings search." />
         <meta-data
             android:name="xposedscope"
             android:resource="@array/xposed_scope" />
+
+        <activity
+            android:name=".StatusActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@android:style/Theme.DeviceDefault">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
     </application>
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Xposed module scope — target the system framework -->
+    <!-- Vector stores System Framework as "system". It migrated older "android" rows. -->
     <string-array name="xposed_scope">
-        <item>android</item>
+        <item>system</item>
     </string-array>
 </resources>

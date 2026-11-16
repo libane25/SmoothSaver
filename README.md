@@ -1,34 +1,65 @@
-# Pixel 7 SmoothSaver (90Hz Battery Saver Enforcer)
+# SmoothSaver 1.3.2
 
-Android 14+ on the Pixel 7 aggressively forces the display refresh rate down to 60Hz the moment Battery Saver is turned on. Standard system overrides (like forcing peak refresh rate in Developer Options) check for the Battery Saver state and obey the lock. 
+LSPosed module for the Pixel 10a (`stallion`) system framework.
 
-This repository fixes that by providing an LSPosed module that neutralizes the restriction at the framework level, allowing you to use Battery Saver while retaining butter-smooth 90Hz scrolling!
+The framework check used the phone's own `services.jar` from `google/stallion/stallion:17/CP3A.261005.005/16271449`. Android 17, SDK 37, Tensor G4.
 
-## How It Works
-The standard Android `DisplayModeDirector` heavily prioritizes a `BatterySaverObserver` which casts a vote to lock the screen at 60Hz. 
-* **LSPosed Module:** Hooks into `DisplayModeDirector` and completely ignores the BatterySaverObserver, seamlessly untethering the refresh rate from the low-power active mode!
+## Why Settings search crashed
 
-## Installation
+1.1.0 runs in `system_server` and does three unsafe things:
 
-### Requirements
-* Pixel 7 (Android 14-16+)
-* Rooted (KernelSU or Magisk)
-* LSPosed (Zygisk-LSPosed or modern forks)
+- It replaces every `onChange`, `observe`, `register`, and `startObserving` on a guessed observer. The real class is `DisplayModeDirector$SettingsObserver`, whose `onChange(boolean, Uri, int)` also updates peak refresh rate, minimum refresh rate, and content frame rate.
+- It hooks every `DisplayModeDirector` method whose name contains `vote` and `update` or `set`, then returns null when the stack contains `BatterySaver`, `LowPower`, or `PowerSave`. A null return from a primitive method crashes the caller. Settings search reaches those paths.
+- Otherwise it hooks `Settings.Global.getInt` and forces `low_power` to 0 whenever `DisplayManagerService` is on the stack.
 
-### LSPosed Module
-1. Download `SmoothSaver-Xposed-vX.X.apk` from the latest [Release](../../releases).
-2. Install the APK to your device.
-3. Open your LSPosed Manager app.
-4. Enable the **"SmoothSaver"** module.
-5. Ensure the scope targets the **System Framework** (`android`).
-6. Reboot your device.
+## What the stallion framework does
 
-## Building from Source
+`SettingsObserver.updateLowPowerModeSettingLocked()` reads `Settings.Global` `low_power`. When Battery Saver is on, it calls:
 
-This project uses Gradle. If you wish to build it yourself:
+`VotesStorage.updateGlobalVote(20, Vote.forRenderFrameRates(0f, 60f))`
+
+`Vote.priorityToString` maps 20 to `PRIORITY_LOW_POWER_MODE_RENDER_RATE` and 19 to `PRIORITY_LOW_POWER_MODE_MODES`. The same method then calls `BrightnessObserver.onLowPowerModeEnabledLocked` and `updateLowPowerModeAllowedModesLocked`. The modes path uses `updateVote` at priority 19.
+
+## What 1.3.0 hooks
+
+One method: `VotesStorage.updateGlobalVote(int, Vote)`, which returns void.
+
+The hook sets the vote argument to null only when the priority is 20 and the caller is `SettingsObserver.updateLowPowerModeSettingLocked`. The original method still runs. Priority 19, the brightness callback, thermal votes, and `Settings.Global.getInt` are not hooked. The module does not write the Battery Saver setting and does not force 120 Hz or 90 Hz.
+
+Before the hook is installed, the running framework must report `Vote.priorityToString(20)` as `PRIORITY_LOW_POWER_MODE_RENDER_RATE`, the method signature must match, and the device codename must be `stallion`. If any check fails, the hook is not installed.
+
+Startup logs use the tag `SmoothSaver`.
+
+## Install
+
+1. Install `SmoothSaver-1.3.2.apk`.
+2. Enable SmoothSaver in Vector.
+3. Scope: System Framework only. On this Vector build that scope is stored as `system`. A scope of `android` does not inject the module into `system_server`. Vector still reports the process package name as `android` once it is loaded. Remove Settings if it is listed.
+4. Reboot.
+
+On the connected phone the working command was:
+
+```bash
+/data/adb/lspd/cli scope set com.smoothsaver.xposed system/0
+```
+
+`scope set` replaces the whole scope. Use `scope add` to append.
+
+## Checked on the phone
+
+After the scope was `system` and the phone rebooted, `system_server` logged `Installed hook: VotesStorage.updateGlobalVote(int, Vote)`. With Battery Saver on, `low_power` stayed `1`, `mLowPowerModeEnabled` was true, and the priority 20 render vote was absent. The user peak vote stayed 0–120 Hz. With Battery Saver off, `low_power` was `0` and the same 0–120 Hz peak vote remained. No `PRIORITY_LOW_POWER_MODE_RENDER_RATE` vote was present in either state. `system_server` did not restart. Settings and the search process stayed running. The lock screen was up, so the search field was not typed into.
+
+## Recovery
+
+1. Disable SmoothSaver in Vector and reboot.
+2. If the phone will not boot normally, boot Android safe mode by holding Volume Down during the boot animation. Safe mode does not load Vector modules. Disable SmoothSaver, then reboot.
+3. From a root shell: `pm uninstall com.smoothsaver.xposed`, then reboot.
+
+## Build
 
 ```bash
 cd xposed
-./gradlew assembleRelease
+./gradlew assembleRelease testDebugUnitTest
 ```
-The resulting module will be output at `xposed/app/build/outputs/apk/release/app-release.apk`
+
+The APK is `xposed/app/build/outputs/apk/release/app-release.apk`.
